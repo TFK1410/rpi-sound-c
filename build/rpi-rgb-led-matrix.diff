@@ -1,0 +1,88 @@
+diff --git a/lib/Makefile b/lib/Makefile
+index 4d18ed1..4d4318d 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -65,7 +65,7 @@ HARDWARE_DESC?=regular
+ # typically should double check cables and add TTL level converter if you
+ # haven't.
+ # Flag: --led-slowdown-gpio
+-#DEFINES+=-DRGB_SLOWDOWN_GPIO=1
++DEFINES+=-DRGB_SLOWDOWN_GPIO=2
+ 
+ # This allows to change the base time-unit for the on-time in the lowest
+ # significant bit in nanoseconds.
+diff --git a/lib/pixel-mapper.cc b/lib/pixel-mapper.cc
+old mode 100644
+new mode 100755
+index 6be3fcd..57cb5c5
+--- a/lib/pixel-mapper.cc
++++ b/lib/pixel-mapper.cc
+@@ -162,6 +162,60 @@ private:
+   int parallel_;
+ };
+ 
++// UInvArrangementMapper is a Uarranged mapping with the lower half of 
++// the matrix inverted upside down
++class UInvArrangementMapper : public PixelMapper {
++public:
++  UInvArrangementMapper() : parallel_(1) {}
++
++  virtual const char *GetName() const { return "UInv-mapper"; }
++
++  virtual bool SetParameters(int chain, int parallel, const char *param) {
++    if (chain < 2) {  // technically, a chain of 2 would work, but somewhat pointless
++      fprintf(stderr, "UInv-mapper: need at least --led-chain=4 for useful folding\n");
++      return false;
++    }
++    if (chain % 2 != 0) {
++      fprintf(stderr, "UInv-mapper: Chain (--led-chain) needs to be divisible by two\n");
++      return false;
++    }
++    parallel_ = parallel;
++    return true;
++  }
++
++  virtual bool GetSizeMapping(int matrix_width, int matrix_height,
++                              int *visible_width, int *visible_height)
++    const {
++    *visible_width = (matrix_width / 64) * 32;   // Div at 32px boundary
++    *visible_height = 2 * matrix_height;
++    if (matrix_height % parallel_ != 0) {
++      fprintf(stderr, "%s For parallel=%d we would expect the height=%d "
++              "to be divisible by %d ??\n",
++              GetName(), parallel_, matrix_height, parallel_);
++      return false;
++    }
++    return true;
++  }
++
++  virtual void MapVisibleToMatrix(int matrix_width, int matrix_height,
++                                  int x, int y,
++                                  int *matrix_x, int *matrix_y) const {
++    const int panel_height = matrix_height / parallel_;
++    const int slab_height = 2 * panel_height;   // one folded u-shape
++    const int base_y = (y / slab_height) * panel_height;
++    y %= slab_height;
++    if (y >= panel_height) {
++      x += matrix_width / 2;
++      y = y - panel_height;
++    }
++    *matrix_x = x;
++    *matrix_y = base_y + y;
++  }
++
++private:
++  int parallel_;
++};
++
+ typedef std::map<std::string, PixelMapper*> MapperByName;
+ static void RegisterPixelMapperInternal(MapperByName *registry,
+                                         PixelMapper *mapper) {
+@@ -178,6 +232,7 @@ static MapperByName *CreateMapperMap() {
+   // Register all the default PixelMappers here.
+   RegisterPixelMapperInternal(result, new RotatePixelMapper());
+   RegisterPixelMapperInternal(result, new UArrangementMapper());
++  RegisterPixelMapperInternal(result, new UInvArrangementMapper());
+   return result;
+ }
+ 
