@@ -21,7 +21,6 @@
 #define LED_MATRIX_COLS 64
 #define LED_MATRIX_CHAINS 4
 #define LED_MATRIX_PIXEL_MAPPER "UInv-Mapper"
-#define DEVICE 2
 #define SAMPLE_RATE 44100
 #define FFT_CORE 1
 #define MAIN_CORE 2
