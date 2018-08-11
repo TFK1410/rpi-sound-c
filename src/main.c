@@ -29,8 +29,7 @@
 #define FFT_UPDATE_RATE 100
 #define MIN_HZ 36
 #define MAX_HZ 20000
-#define FFT_CURVE 0.7
-#define DISPLAY_CURVE 0.7
+#define FFT_CURVE 0.65
 #define LED_MATRIX_BRIGHTNESS 50
 
 #define WAVE_SPEED 500 // in ms
@@ -231,7 +230,7 @@ int main(int argc, char* argv[]){
     printf("Exiting\n");
 }
 
-void beat_wave_subband_calc(double *average_subbands, double **subbands, double *cur_fft){
+void beat_wave_subband_calc(double *average_subbands, double **subbands, double *smoothed_fft){
     for (int i = out.max_radii - 1; i > 0; i--){
         out.bass_wave_color[i] = change_brightness(out.bass_wave_color[i-1], 0.97);
     }
@@ -244,8 +243,8 @@ void beat_wave_subband_calc(double *average_subbands, double **subbands, double 
         }
         average_subbands[i] /= SUBBANDS_HISTORY;
 
-        if (cur_fft[i] > MIN_VAL &&
-            cur_fft[i] > SUBBANDS_CONSTANT*average_subbands[i]){
+        if (smoothed_fft[i] > MIN_VAL &&
+            smoothed_fft[i] > SUBBANDS_CONSTANT*average_subbands[i]){
             if (i < 1.0f * SUBBANDS_COUNT / 3)
                 out.bass_wave_color[0].b = bass_color.b;
             else if (i < 2.0f * SUBBANDS_COUNT / 3)
@@ -255,11 +254,11 @@ void beat_wave_subband_calc(double *average_subbands, double **subbands, double 
         }
 
         memmove(&subbands[i][1], &subbands[i][0], (SUBBANDS_HISTORY - 1) * sizeof(double));
-        subbands[i][0] = cur_fft[i];
+        subbands[i][0] = smoothed_fft[i];
     }
 }
 
-void fft_to_bins(int i, int *fft_bins, double *cur_fft, double *out_fft){
+void fft_to_bins(int i, int *fft_bins, double *smoothed_fft, double *out_fft){
     double max_from_bins;
 
     if (fft_bins[i] != fft_bins[i+1])
@@ -272,8 +271,8 @@ void fft_to_bins(int i, int *fft_bins, double *cur_fft, double *out_fft){
         log10_max = log10(max_from_bins);
     }
 
-    cur_fft[i] = FFT_CURVE * cur_fft[i] + (1 - FFT_CURVE) * 20 * log10_max;
-    out.out_matrix[i] = (cur_fft[i] - out.out_matrix[i]) * DISPLAY_CURVE + out.out_matrix[i];
+    smoothed_fft[i] = FFT_CURVE * smoothed_fft[i] + (1 - FFT_CURVE) * 20 * log10_max;
+    out.out_matrix[i] = (smoothed_fft[i] - out.out_matrix[i]) * FFT_CURVE + out.out_matrix[i];
 }
 
 void white_dot_calc(int i, int *white_dot_arr_delay){
@@ -295,7 +294,7 @@ void *fft_func(){
 
     double *in, *out_fft;
     int *fft_bins = malloc((out.data_width + 1) * sizeof(int));
-    double *cur_fft = malloc(out.data_width * sizeof(double));
+    double *smoothed_fft = malloc(out.data_width * sizeof(double));
     double *average_subbands = calloc(SUBBANDS_COUNT, sizeof(double));
     double **subbands = calloc(SUBBANDS_COUNT, sizeof(double*));
     int *white_dot_arr_delay = calloc(out.data_width, sizeof(int));
@@ -331,14 +330,14 @@ void *fft_func(){
         fftw_execute(p); /* repeat as needed */
 
         for (int i = 0; i < out.data_width; i++){
-            fft_to_bins(i, fft_bins, cur_fft, out_fft);
+            fft_to_bins(i, fft_bins, smoothed_fft, out_fft);
 
             white_dot_calc(i, white_dot_arr_delay);
         }
 
         if ((clock() - beat_clock) >= beat_clock_interval){
             beat_clock = clock();
-            beat_wave_subband_calc(average_subbands, subbands, cur_fft);
+            beat_wave_subband_calc(average_subbands, subbands, smoothed_fft);
         }
 
         if((clock() - start) < time_between_updates){
@@ -353,7 +352,7 @@ void *fft_func(){
 
 
     free(fft_bins);
-    free(cur_fft);
+    free(smoothed_fft);
     free(average_subbands);
     free(white_dot_arr_delay);
     for(int i = 0; i < SUBBANDS_COUNT; i++)
