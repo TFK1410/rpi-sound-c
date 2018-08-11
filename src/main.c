@@ -15,34 +15,11 @@
 #include "led-matrix-c.h"
 #include "utils.h"
 #include "loops.h"
-
-// code is constructed with below values in mind
-#define LED_MATRIX_ROWS 32
-#define LED_MATRIX_COLS 64
-#define LED_MATRIX_CHAINS 4
-#define LED_MATRIX_PIXEL_MAPPER "UInv-Mapper"
-#define SAMPLE_RATE 44100
-#define FFT_CORE 1
-#define MAIN_CORE 2
-
-#define CHUNK_POWER 13
-#define FFT_UPDATE_RATE 100
-#define MIN_HZ 36
-#define MAX_HZ 20000
-#define FFT_CURVE 0.65
-#define LED_MATRIX_BRIGHTNESS 50
-
-#define WAVE_SPEED 500 // in ms
-#define SUBBANDS_COUNT 64
-#define SUBBANDS_HISTORY 43
-#define SUBBANDS_CONSTANT 1.1
-
-#define WHITE_DOT_HANG 20
-
-#define DISP_CHANGE_SEC 0
+#include "configuration.h"
 
 LedOutData out;
 short *audio_data;
+extern Configuration config;
 
 int stream_read_frames;
 
@@ -91,12 +68,13 @@ static int callback( const void *inputBuffer, void *outputBuffer,
 
 
 int main(int argc, char* argv[]){
+    config_defaults();
     PaError err;
     PaStreamParameters inputParameters;
     PaStream* stream;
 
-    stream_read_frames = SAMPLE_RATE / FFT_UPDATE_RATE;
-    out.chunk_size = 1<<CHUNK_POWER;
+    stream_read_frames = config.sample_rate / config.fft_update_rate;
+    out.chunk_size = 1<<config.chunk_power;
 
     record = false;
     stop_app = false;
@@ -115,17 +93,6 @@ int main(int argc, char* argv[]){
         printf("RUN AS ROOT, USE SUDO\n");
         exit(1);
     }
-
-    if(argc != 3)
-    {
-        printf("Incorrect number of parameters\n");
-        exit(1);
-    }
-
-    out.my_wave_type = atoi(argv[1]) - 1;
-    out.add_white_dot = atoi(argv[2]);
-    if(out.add_white_dot > 1 || out.add_white_dot < 0) out.add_white_dot = 0;
-    if(out.my_wave_type > 5 || out.my_wave_type < 1) out.my_wave_type = STD_WAVE;
 
     err = Pa_Initialize();
     if( err != paNoError ) {
@@ -148,7 +115,7 @@ int main(int argc, char* argv[]){
               &stream,
               &inputParameters,
               NULL,
-              SAMPLE_RATE,
+              config.sample_rate,
               stream_read_frames,
               paClipOff,
               callback,
@@ -163,11 +130,11 @@ int main(int argc, char* argv[]){
     struct RGBLedMatrixOptions options;
 
     memset(&options, 0, sizeof(options));
-    options.rows = LED_MATRIX_ROWS;
-    options.chain_length = LED_MATRIX_CHAINS;
-    options.cols = LED_MATRIX_COLS;
-    options.brightness = LED_MATRIX_BRIGHTNESS;
-    options.pixel_mapper_config = LED_MATRIX_PIXEL_MAPPER;
+    options.rows = config.led_matrix_rows;
+    options.chain_length = config.led_matrix_chains;
+    options.cols = config.led_matrix_cols;
+    options.brightness = config.led_matrix_brightness;
+    options.pixel_mapper_config = config.led_matrix_pixel_mapper;
 #ifdef DEBUG_LED_REFRESH
     options.show_refresh_rate = true;
 #endif
@@ -196,21 +163,23 @@ int main(int argc, char* argv[]){
     pthread_create(&fft_thread, NULL, fft_func, NULL);
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
-    CPU_SET(FFT_CORE, &cpuset);
+    CPU_SET(config.fft_core, &cpuset);
     pthread_setaffinity_np(fft_thread, sizeof(cpu_set_t), &cpuset);
     CPU_ZERO(&cpuset);
-    CPU_SET(MAIN_CORE, &cpuset);
+    CPU_SET(config.main_core, &cpuset);
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 
+    out.add_white_dot = config.add_white_dot;
+    out.my_wave_type = config.starting_wave;
     clock_t rotation_clock = clock();
     while(!stop_app){
       led_canvas_clear(out.offscreen_canvas);
 
-      if (DISP_CHANGE_SEC != 0 && (clock() - rotation_clock) / CLOCKS_PER_SEC > DISP_CHANGE_SEC){
+      if (config.disp_change_sec != 0 && (clock() - rotation_clock) / CLOCKS_PER_SEC > config.disp_change_sec){
           rotation_clock = clock();
           out.my_wave_type++;
-          if (out.my_wave_type == 4)
-            out.my_wave_type = STD_WAVE;
+          if (out.my_wave_type == config.wave_types)
+              out.my_wave_type = STD_WAVE;
       }
       call_loop(&out);
 
@@ -235,25 +204,25 @@ void beat_wave_subband_calc(double *average_subbands, double **subbands, double 
         out.bass_wave_color[i] = change_brightness(out.bass_wave_color[i-1], 0.97);
     }
 
-    out.bass_wave_color[0] = clear_color;
-    for (int i = 0; i < SUBBANDS_COUNT; i++){
+    out.bass_wave_color[0] = config.clear_color;
+    for (int i = 0; i < config.subbands_count; i++){
         average_subbands[i] = 0;
-        for (int j = 0; j < SUBBANDS_HISTORY; j++){
+        for (int j = 0; j < config.subbands_history; j++){
             average_subbands[i] += subbands[i][j];
         }
-        average_subbands[i] /= SUBBANDS_HISTORY;
+        average_subbands[i] /= config.subbands_history;
 
-        if (smoothed_fft[i] > MIN_VAL &&
-            smoothed_fft[i] > SUBBANDS_CONSTANT*average_subbands[i]){
-            if (i < 1.0f * SUBBANDS_COUNT / 3)
-                out.bass_wave_color[0].b = bass_color.b;
-            else if (i < 2.0f * SUBBANDS_COUNT / 3)
-                out.bass_wave_color[0].g = bass_color.g;
+        if (smoothed_fft[i] > config.min_val &&
+            smoothed_fft[i] > config.subbands_constant*average_subbands[i]){
+            if (i < 1.0f * config.subbands_count / 3)
+                out.bass_wave_color[0].b = config.bass_color.b;
+            else if (i < 2.0f * config.subbands_count / 3)
+                out.bass_wave_color[0].g = config.bass_color.g;
             else
-                out.bass_wave_color[0].r = bass_color.r;
+                out.bass_wave_color[0].r = config.bass_color.r;
         }
 
-        memmove(&subbands[i][1], &subbands[i][0], (SUBBANDS_HISTORY - 1) * sizeof(double));
+        memmove(&subbands[i][1], &subbands[i][0], (config.subbands_history - 1) * sizeof(double));
         subbands[i][0] = smoothed_fft[i];
     }
 }
@@ -271,15 +240,15 @@ void fft_to_bins(int i, int *fft_bins, double *smoothed_fft, double *out_fft){
         log10_max = log10(max_from_bins);
     }
 
-    smoothed_fft[i] = FFT_CURVE * smoothed_fft[i] + (1 - FFT_CURVE) * 20 * log10_max;
-    out.out_matrix[i] = (smoothed_fft[i] - out.out_matrix[i]) * FFT_CURVE + out.out_matrix[i];
+    smoothed_fft[i] = config.fft_curve * smoothed_fft[i] + (1 - config.fft_curve) * 20 * log10_max;
+    out.out_matrix[i] = (smoothed_fft[i] - out.out_matrix[i]) * config.fft_curve + out.out_matrix[i];
 }
 
 void white_dot_calc(int i, int *white_dot_arr_delay){
     if (out.add_white_dot == 1){
         if (out.white_dot_arr[i] < out.out_matrix[i]){
             out.white_dot_arr[i] = out.out_matrix[i];
-            white_dot_arr_delay[i] = WHITE_DOT_HANG;
+            white_dot_arr_delay[i] = config.white_dot_hang;
         }
         else if (white_dot_arr_delay[i] > 0){
             white_dot_arr_delay[i]--;
@@ -295,8 +264,8 @@ void *fft_func(){
     double *in, *out_fft;
     int *fft_bins = malloc((out.data_width + 1) * sizeof(int));
     double *smoothed_fft = malloc(out.data_width * sizeof(double));
-    double *average_subbands = calloc(SUBBANDS_COUNT, sizeof(double));
-    double **subbands = calloc(SUBBANDS_COUNT, sizeof(double*));
+    double *average_subbands = calloc(config.subbands_count, sizeof(double));
+    double **subbands = calloc(config.subbands_count, sizeof(double*));
     int *white_dot_arr_delay = calloc(out.data_width, sizeof(int));
     fftw_plan p;
 
@@ -305,19 +274,19 @@ void *fft_func(){
 
     p = fftw_plan_r2r_1d(out.chunk_size, in, out_fft, FFTW_FORWARD, FFTW_MEASURE);
 
-    for (int i = 0; i < SUBBANDS_COUNT; i++){
-        subbands[i] = malloc(SUBBANDS_HISTORY * sizeof(double));
-        for (int j = 0; j < SUBBANDS_HISTORY; j++){
+    for (int i = 0; i < config.subbands_count; i++){
+        subbands[i] = malloc(config.subbands_history * sizeof(double));
+        for (int j = 0; j < config.subbands_history; j++){
             subbands[i][j] = INFINITY;
         }
     }
 
-    calculate_bins(MIN_HZ, MAX_HZ, out.data_width, SAMPLE_RATE, out.chunk_size, fft_bins);
+    calculate_bins(config.min_hz, config.max_hz, out.data_width, config.sample_rate, out.chunk_size, fft_bins);
 
     clock_t beat_clock = clock();
-    clock_t beat_clock_interval = (clock_t)(1.0f * WAVE_SPEED / 1000 / out.max_radii * CLOCKS_PER_SEC);
+    clock_t beat_clock_interval = (clock_t)(1.0f * config.wave_speed / 1000 / out.max_radii * CLOCKS_PER_SEC);
     clock_t start;
-    clock_t time_between_updates = (clock_t)(CLOCKS_PER_SEC / FFT_UPDATE_RATE);
+    clock_t time_between_updates = (clock_t)(CLOCKS_PER_SEC / config.fft_update_rate);
 
     struct timespec tm;
 
@@ -355,7 +324,7 @@ void *fft_func(){
     free(smoothed_fft);
     free(average_subbands);
     free(white_dot_arr_delay);
-    for(int i = 0; i < SUBBANDS_COUNT; i++)
+    for(int i = 0; i < config.subbands_count; i++)
         free(subbands[i]);
     free(subbands);
 

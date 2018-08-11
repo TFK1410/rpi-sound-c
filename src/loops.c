@@ -2,12 +2,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-
-LedColor fft_color_base = {0xff, 0xff, 0x00};
-LedColor bass_color = {0xb0, 0x60, 0xd0};
-LedColor clear_color = {0x00, 0x00, 0x00};
-LedColor white_dot = {0xff, 0xff, 0xff};
-
 LedColor change_brightness(LedColor x, double brightness){
     LedColor y;
     y.r = (unsigned char)(round(x.r * brightness));
@@ -60,13 +54,15 @@ void init_data(LedOutData *out){
 
     out->fft_colors = malloc(out->matrix_height * sizeof(LedColor));
 
-    set_color_vector(out, fft_color_base);
+    set_color_vector(out, config.fft_color_base);
 
+    config.wave_types = LAST_WAVE;
     init_waves(out);
 }
 
 void init_waves(LedOutData *out){
-    for(int i = 0; i < WAVE_TYPES; i++) {
+    out->waves = malloc(config.wave_types * sizeof(WaveData));
+    for(int i = 0; i < config.wave_types; i++) {
           out->waves[i].bass_color_to_matrix = malloc(out->matrix_width * sizeof(LedColor**));
           for (int j = 0; j < out->matrix_width; j++)
               out->waves[i].bass_color_to_matrix[j] = malloc(out->matrix_height * sizeof(LedColor*));
@@ -86,9 +82,9 @@ void init_waves(LedOutData *out){
               center_distance(out, 0, 0, out->waves[i].bass_color_to_matrix);
 
           out->waves[i].col_barriers = malloc(out->waves[i].data_height * sizeof(double));
-          calculate_barriers(out->waves[i].data_height, MIN_VAL, MAX_VAL, out->waves[i].col_barriers);
+          calculate_barriers(out->waves[i].data_height, config.min_val, config.max_val, out->waves[i].col_barriers);
 
-          out->waves[i].white_dot_height_step = 1.0f * WHITE_DOT_FALL * (MAX_VAL - MIN_VAL) / out->waves[i].data_height;
+          out->waves[i].white_dot_height_step = 1.0f * config.white_dot_fall * (config.max_val - config.min_val) / out->waves[i].data_height;
       }
 
       out->waves[STD_WAVE].call_wave = std_wave;
@@ -100,12 +96,13 @@ void init_waves(LedOutData *out){
 
 void delete_waves(LedOutData *out){
 
-    for (int i = 0; i < WAVE_TYPES; i++){
+    for (int i = 0; i < config.wave_types; i++){
         free(out->waves[i].col_barriers);
         for (int j = 0; j < out->matrix_width; j++)
             free(out->waves[i].bass_color_to_matrix[j]);
         free(out->waves[i].bass_color_to_matrix);
     }
+    free(out->waves);
 }
 
 void delete_data(LedOutData *out){
@@ -136,7 +133,7 @@ void std_wave(LedOutData *out){
         for (int y = 0; y < out->waves[STD_WAVE].data_height; ++y) {
             if(out->waves[STD_WAVE].col_barriers[y-1] > out->white_dot_arr[x] &&
                out->waves[STD_WAVE].col_barriers[y] < out->white_dot_arr[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
             } else if(out->waves[STD_WAVE].col_barriers[y] < out->out_matrix[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
             } else {
@@ -158,7 +155,7 @@ void ripple_wave(LedOutData *out){
 
             if(out->waves[RIPPLE_WAVE].col_barriers[y-1] > out->white_dot_arr[x] &&
                out->waves[RIPPLE_WAVE].col_barriers[y] < out->white_dot_arr[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
             } else if(out->waves[RIPPLE_WAVE].col_barriers[y] < out->out_matrix[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y_num]);
             } else {
@@ -168,7 +165,7 @@ void ripple_wave(LedOutData *out){
 
             if (y % 3 == 0 &&
                 out->waves[RIPPLE_WAVE].col_barriers[y] < out->out_matrix[x]){
-                clr = change_brightness(out->fft_colors[y_num], DARKER_MULT);
+                clr = change_brightness(out->fft_colors[y_num], config.darker_mult);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y_col, clr);
             } else if (y % 3 == 0){
                 float darker = 1.0f * y / 3 * 4 / out->matrix_height;
@@ -188,7 +185,7 @@ void mirror_wave(LedOutData *out){
         for (int y = 0; y < out->waves[MIRROR_WAVE].data_height; ++y) {
             if(out->waves[MIRROR_WAVE].col_barriers[y-1] > out->white_dot_arr[x] &&
                 out->waves[MIRROR_WAVE].col_barriers[y] < out->white_dot_arr[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
             } else if(out->waves[MIRROR_WAVE].col_barriers[y] < out->out_matrix[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
             } else {
@@ -206,8 +203,8 @@ void quad_wave(LedOutData *out){
             int yy = out->matrix_height - y - 1;
             if(out->waves[QUAD_WAVE].col_barriers[y-1] > out->white_dot_arr[x] &&
                 out->waves[QUAD_WAVE].col_barriers[y] < out->white_dot_arr[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, white_dot);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, config.white_dot);
             } else if(out->waves[QUAD_WAVE].col_barriers[y] < out->out_matrix[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
@@ -228,8 +225,8 @@ void quad_wave_inv(LedOutData *out){
             int yy2 = out->matrix_height - yy1 - 1;
             if(out->waves[QUAD_WAVE_INV].col_barriers[y-1] > out->white_dot_arr[x] &&
                 out->waves[QUAD_WAVE_INV].col_barriers[y] < out->white_dot_arr[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, white_dot);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, config.white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, config.white_dot);
             } else if(out->waves[QUAD_WAVE_INV].col_barriers[y] < out->out_matrix[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, out->fft_colors[y]);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, out->fft_colors[y]);

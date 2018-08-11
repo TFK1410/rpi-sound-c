@@ -3,29 +3,12 @@
 
 #include "led-matrix-c.h"
 #include "utils.h"
+#include "configuration.h"
 
 #define COLOR(x) x.r, x.g, x.b
 #define COLOR_PTR(x) x->r, x->g, x->b
 
-#define DARKER_MULT 0.4
-#define MIN_VAL 110
-#define MAX_VAL 155
-#define WHITE_DOT_FALL 0.5
-
-#define WAVE_TYPES 5
-
-typedef struct{
-    unsigned char r;
-    unsigned char g;
-    unsigned char b;
-} LedColor;
-
-extern LedColor fft_color_base;
-extern LedColor bass_color;
-extern LedColor clear_color;
-extern LedColor white_dot;
-
-typedef enum {STD_WAVE, RIPPLE_WAVE, MIRROR_WAVE, QUAD_WAVE, QUAD_WAVE_INV} wave_type;
+typedef enum {STD_WAVE, RIPPLE_WAVE, MIRROR_WAVE, QUAD_WAVE, QUAD_WAVE_INV, LAST_WAVE} wave_type;
 typedef struct LedOutData LedOutData;
 
 typedef struct WaveData{
@@ -57,7 +40,7 @@ typedef struct LedOutData{
 
     size_t chunk_size;
 
-    WaveData waves[WAVE_TYPES];
+    WaveData *waves;
     wave_type my_wave_type;
 } LedOutData;
 
