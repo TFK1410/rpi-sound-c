@@ -12,7 +12,7 @@
 #define MAX_VAL 155
 #define WHITE_DOT_FALL 0.5
 
-#define WAVE_TYPES 3
+#define WAVE_TYPES 5
 
 typedef struct{
     unsigned char r;
@@ -25,7 +25,7 @@ extern LedColor bass_color;
 extern LedColor clear_color;
 extern LedColor white_dot;
 
-typedef enum {STD_WAVE, RIPPLE_WAVE, MIRROR_WAVE} wave_type;
+typedef enum {STD_WAVE, RIPPLE_WAVE, MIRROR_WAVE, QUAD_WAVE, QUAD_WAVE_INV} wave_type;
 typedef struct LedOutData LedOutData;
 
 typedef struct WaveData{
@@ -78,5 +78,7 @@ LedColor change_brightness(LedColor x, double brightness);
 void std_wave(LedOutData *out);
 void ripple_wave(LedOutData *out);
 void mirror_wave(LedOutData *out);
+void quad_wave(LedOutData *out);
+void quad_wave_inv(LedOutData *out);
 
 #endif

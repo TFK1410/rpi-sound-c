@@ -40,7 +40,7 @@
 
 #define WHITE_DOT_HANG 20
 
-#define DISP_CHANGE_SEC 60
+#define DISP_CHANGE_SEC 0
 
 LedOutData out;
 short *audio_data;
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]){
     out.my_wave_type = atoi(argv[1]) - 1;
     out.add_white_dot = atoi(argv[2]);
     if(out.add_white_dot > 1 || out.add_white_dot < 0) out.add_white_dot = 0;
-    if(out.my_wave_type > 3 || out.my_wave_type < 1) out.my_wave_type = STD_WAVE;
+    if(out.my_wave_type > 5 || out.my_wave_type < 1) out.my_wave_type = STD_WAVE;
 
     err = Pa_Initialize();
     if( err != paNoError ) {
@@ -207,10 +207,10 @@ int main(int argc, char* argv[]){
     while(!stop_app){
       led_canvas_clear(out.offscreen_canvas);
 
-      if ((clock() - rotation_clock) / CLOCKS_PER_SEC > DISP_CHANGE_SEC){
+      if (DISP_CHANGE_SEC != 0 && (clock() - rotation_clock) / CLOCKS_PER_SEC > DISP_CHANGE_SEC){
           rotation_clock = clock();
           out.my_wave_type++;
-          if (out.my_wave_type == 3)
+          if (out.my_wave_type == 4)
             out.my_wave_type = STD_WAVE;
       }
       call_loop(&out);
