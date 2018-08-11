@@ -88,11 +88,17 @@ int main(int argc, char* argv[]){
         exit(1);
     }
 
-    if(geteuid() != 0)
-    {
+    if (geteuid() != 0){
         printf("RUN AS ROOT, USE SUDO\n");
         exit(1);
     }
+
+    if (argc != 2){
+        printf("Invalid number of arguments provide just the ini file.\n");
+        exit(1);
+    }
+
+    parse(argv[1]);
 
     err = Pa_Initialize();
     if( err != paNoError ) {

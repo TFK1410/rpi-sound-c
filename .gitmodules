@@ -4,3 +4,4 @@
 [submodule "inih"]
 	path = inih
 	url = https://github.com/benhoyt/inih
+	ignore = untracked

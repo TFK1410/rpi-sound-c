@@ -11,7 +11,7 @@ typedef struct Configuration{
     int led_matrix_rows;
     int led_matrix_cols;
     int led_matrix_chains;
-    char* led_matrix_pixel_mapper;
+    const char* led_matrix_pixel_mapper;
     int led_matrix_brightness;
 
     int fft_core;
@@ -38,8 +38,9 @@ typedef struct Configuration{
     int add_white_dot;
 
     int disp_change_sec;
-    int wave_types;
     int starting_wave;
+
+    int wave_types;
 
     LedColor fft_color_base;
     LedColor bass_color;
@@ -50,5 +51,6 @@ typedef struct Configuration{
 Configuration config;
 
 void config_defaults();
+void parse(const char *file);
 
 #endif

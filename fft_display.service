@@ -2,7 +2,7 @@
 Description=FFT Display control service
 
 [Service]
-ExecStart=/home/pi/share/rpi-sound-c/build/fft-c 3 1
+ExecStart=/home/pi/share/rpi-sound-c/build/fft-c /home/pi/share/rpi-sound-c/build/config.ini
 StandardOutput=null
 
 [Install]
