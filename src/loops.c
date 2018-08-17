@@ -68,7 +68,7 @@ void init_waves(LedOutData *out){
               out->waves[i].bass_color_to_matrix[j] = malloc(out->matrix_height * sizeof(LedColor*));
 
           if (i == RIPPLE_WAVE)
-              out->waves[i].data_height = 3 * out->matrix_height / 2;
+              out->waves[i].data_height = 3 * out->matrix_height / 4;
           else if (i == QUAD_WAVE || i == QUAD_WAVE_INV)
               out->waves[i].data_height = out->matrix_height / 2;
           else
