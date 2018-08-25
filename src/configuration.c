@@ -131,8 +131,5 @@ void parse(const char *file){
         printf("Can't load %s using the defaults\n", file);
         return;
     }
-    if (config.starting_wave >= config.wave_types){
-      config.starting_wave = 0;
-    }
     printf("Config loaded from %s\n", file);
 }

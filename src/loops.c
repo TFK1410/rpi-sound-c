@@ -57,6 +57,10 @@ void init_data(LedOutData *out){
     set_color_vector(out, config.fft_color_base);
 
     config.wave_types = LAST_WAVE;
+    if (config.starting_wave >= config.wave_types){
+      config.starting_wave = 0;
+    }
+
     init_waves(out);
 }
 
@@ -69,15 +73,15 @@ void init_waves(LedOutData *out){
 
           if (i == RIPPLE_WAVE)
               out->waves[i].data_height = 3 * out->matrix_height / 4;
-          else if (i == QUAD_WAVE || i == QUAD_WAVE_INV)
+          else if (i == QUAD_WAVE || i == QUAD_WAVE_INV || i == QUAD_WAVE_MIRR)
               out->waves[i].data_height = out->matrix_height / 2;
           else
               out->waves[i].data_height = out->matrix_height;
 
           if (i == MIRROR_WAVE)
-              center_distance(out, out->matrix_width / 2 + 0.5, 0, out->waves[i].bass_color_to_matrix);
-          else if (i == QUAD_WAVE || i == QUAD_WAVE_INV)
-              center_distance(out, out->matrix_width / 2 + 0.5, out->matrix_height / 2 + 0.5, out->waves[i].bass_color_to_matrix);
+              center_distance(out, out->matrix_width / 2 - 0.5, 0, out->waves[i].bass_color_to_matrix);
+          else if (i == QUAD_WAVE || i == QUAD_WAVE_INV || i == QUAD_WAVE_MIRR)
+              center_distance(out, out->matrix_width / 2 - 0.5, out->matrix_height / 2 - 0.5, out->waves[i].bass_color_to_matrix);
           else
               center_distance(out, 0, 0, out->waves[i].bass_color_to_matrix);
 
@@ -92,6 +96,7 @@ void init_waves(LedOutData *out){
       out->waves[MIRROR_WAVE].call_wave = mirror_wave;
       out->waves[QUAD_WAVE].call_wave = quad_wave;
       out->waves[QUAD_WAVE_INV].call_wave = quad_wave_inv;
+      out->waves[QUAD_WAVE_MIRR].call_wave = quad_wave_mirr;
 }
 
 void delete_waves(LedOutData *out){
@@ -233,6 +238,27 @@ void quad_wave_inv(LedOutData *out){
             } else {
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy1]);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy2]);
+            }
+        }
+    }
+}
+
+void quad_wave_mirr(LedOutData *out){
+    for (int x = 0; x < out->data_width; ++x) {
+        int x1 = out->matrix_width - 1 - x;
+        int x2 = x;
+        for (int y = 0; y < out->waves[QUAD_WAVE_MIRR].data_height; ++y) {
+            int yy = out->matrix_height - y - 1;
+            if(out->waves[QUAD_WAVE_MIRR].col_barriers[y-1] > out->white_dot_arr[x] &&
+                out->waves[QUAD_WAVE_MIRR].col_barriers[y] < out->white_dot_arr[x]){
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, config.white_dot);
+            } else if(out->waves[QUAD_WAVE_MIRR].col_barriers[y] < out->out_matrix[x]){
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
+            } else {
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][y]);
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][yy]);
             }
         }
     }

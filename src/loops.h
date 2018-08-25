@@ -8,7 +8,7 @@
 #define COLOR(x) x.r, x.g, x.b
 #define COLOR_PTR(x) x->r, x->g, x->b
 
-typedef enum {STD_WAVE, RIPPLE_WAVE, MIRROR_WAVE, QUAD_WAVE, QUAD_WAVE_INV, LAST_WAVE} wave_type;
+typedef enum {STD_WAVE, RIPPLE_WAVE, MIRROR_WAVE, QUAD_WAVE, QUAD_WAVE_INV, QUAD_WAVE_MIRR, LAST_WAVE} wave_type;
 typedef struct LedOutData LedOutData;
 
 typedef struct WaveData{
@@ -63,5 +63,6 @@ void ripple_wave(LedOutData *out);
 void mirror_wave(LedOutData *out);
 void quad_wave(LedOutData *out);
 void quad_wave_inv(LedOutData *out);
+void quad_wave_mirr(LedOutData *out);
 
 #endif
