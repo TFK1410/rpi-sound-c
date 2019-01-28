@@ -16,6 +16,7 @@
 #include "utils.h"
 #include "loops.h"
 #include "configuration.h"
+#include "rotaryEncoder.h"
 
 LedOutData out;
 short *audio_data;
@@ -156,7 +157,7 @@ int main(int argc, char* argv[]){
     audio_data = calloc(out.chunk_size, sizeof(short));
     init_data(&out);
 
-
+    initEncoder();
     printf("FFT samples: %zu. Samples per callback: %d. Size: %dx%d. Hardware gpio mapping: %s\n",
             out.chunk_size, stream_read_frames, out.matrix_width, out.matrix_height, options.hardware_mapping);
 
@@ -178,7 +179,6 @@ int main(int argc, char* argv[]){
     out.add_white_dot = config.add_white_dot;
     out.my_wave_type = config.starting_wave;
     clock_t rotation_clock = clock();
-    //led_matrix_set_brightness(out.matrix, 100);
     while(!stop_app){
       led_canvas_clear(out.offscreen_canvas);
 
@@ -188,6 +188,23 @@ int main(int argc, char* argv[]){
           if (out.my_wave_type == config.wave_types)
               out.my_wave_type = STD_WAVE;
       }
+
+      if (encoderState != 0){
+        options.brightness += encoderState;
+        if (options.brightness < 0)
+          options.brightness = 0;
+        if (options.brightness > 100)
+          options.brightness = 100;
+        encoderState = 0;
+        led_matrix_set_brightness(out.matrix, options.brightness);
+      }
+      if (encoderPush != 0){
+        encoderPush = 0;
+        out.my_wave_type++;
+        if (out.my_wave_type == config.wave_types)
+            out.my_wave_type = STD_WAVE;
+      }
+
       call_loop(&out);
 
       out.offscreen_canvas = led_matrix_swap_on_vsync(out.matrix, out.offscreen_canvas);

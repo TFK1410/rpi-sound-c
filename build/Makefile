@@ -1,6 +1,6 @@
-LDFLAGS = -lportaudio -lpthread -lm -lfftw3 -lstdc++
+LDFLAGS = -lportaudio -lpthread -lm -lfftw3 -lstdc++ -lwiringPi
 CFLAGS = -Wall -O3 -I.
-SOURCES = ../src/main.c ../src/loops.c ../src/utils.c ../src/configuration.c ../inih/ini.c
+SOURCES = ../src/main.c ../src/loops.c ../src/utils.c ../src/configuration.c ../inih/ini.c ../src/rotaryEncoder.c
 NAME = fft-c
 
 RGB_LIB_DISTRIBUTION=../rpi-rgb-led-matrix
