@@ -178,6 +178,7 @@ int main(int argc, char* argv[]){
     out.add_white_dot = config.add_white_dot;
     out.my_wave_type = config.starting_wave;
     clock_t rotation_clock = clock();
+    //led_matrix_set_brightness(out.matrix, 100);
     while(!stop_app){
       led_canvas_clear(out.offscreen_canvas);
 
