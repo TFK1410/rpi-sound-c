@@ -157,7 +157,7 @@ int main(int argc, char* argv[]){
     audio_data = calloc(out.chunk_size, sizeof(short));
     init_data(&out);
 
-    initEncoder();
+    initEncoder(config.DTpin, config.CLKpin, config.SWpin);
     printf("FFT samples: %zu. Samples per callback: %d. Size: %dx%d. Hardware gpio mapping: %s\n",
             out.chunk_size, stream_read_frames, out.matrix_width, out.matrix_height, options.hardware_mapping);
 

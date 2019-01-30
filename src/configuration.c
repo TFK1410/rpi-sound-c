@@ -43,6 +43,10 @@ void config_defaults(){
     config.bass_color = (LedColor){0xb0, 0x60, 0xd0};
     config.clear_color = (LedColor){0x00, 0x00, 0x00};
     config.white_dot = (LedColor){0xff, 0xff, 0xff};
+
+    config.DTpin = 27;
+    config.CLKpin = 28;
+    config.SWpin = 26;
 }
 
 static int handler(void* user, const char* section, const char* name, const char* value){
@@ -120,6 +124,12 @@ static int handler(void* user, const char* section, const char* name, const char
         sscanf(value, "%x, %x, %x", &r, &g, &b);
         COLOR_SET(pconfig->white_dot, r, g, b)
     }
+    else if (MATCH("encoder", "DTpin"))
+        pconfig->DTpin = atoi(value);
+    else if (MATCH("encoder", "CLKpin"))
+        pconfig->CLKpin = atoi(value);
+    else if (MATCH("encoder", "SWpin"))
+        pconfig->SWpin = atoi(value);
     else
         return 0;  /* unknown section/name, error */
     return 1;

@@ -46,6 +46,10 @@ typedef struct Configuration{
     LedColor bass_color;
     LedColor clear_color;
     LedColor white_dot;
+
+    int DTpin;
+    int CLKpin;
+    int SWpin;
 } Configuration;
 
 Configuration config;

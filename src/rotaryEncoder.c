@@ -4,14 +4,17 @@
 #include <string.h>
 #include <wiringPi.h>
 
-#define  RoAPin    27 //DT GPIO 36
-#define  RoBPin    28 //CLK GPIO 38
-#define  RoSPin    26 //SW GPIO 32
+//DT GPIO 36
+//CLK GPIO 38
+//SW GPIO 32
 //vcc pin 1
 //ground pin 20
 
 unsigned char Last_RoB_Status;
 unsigned char Current_RoB_Status;
+unsigned char RoAPin;
+unsigned char RoBPin;
+unsigned char RoSPin;
 
 void callDeal(void){
   if (digitalRead(RoAPin) == 0){
@@ -30,11 +33,15 @@ void callClear(void){
   encoderPush = 1;
 }
 
-void initEncoder(void){
+void initEncoder(int DTpin, int CLKpin, int SWpin){
   if(wiringPiSetup() < 0){
     fprintf(stderr, "Unable to setup wiringPi:%s\n",strerror(errno));
     return;
   }
+
+  RoAPin = DTpin;
+  RoBPin = CLKpin;
+  RoSPin = SWpin;
 
   pinMode(RoAPin, INPUT);
   pinMode(RoBPin, INPUT);
