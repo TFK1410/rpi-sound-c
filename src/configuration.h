@@ -50,6 +50,10 @@ typedef struct Configuration{
     int DTpin;
     int CLKpin;
     int SWpin;
+
+    int dmx_mode;
+    int dmx_update_delay;
+    unsigned int dmx_slave_address;
 } Configuration;
 
 Configuration config;

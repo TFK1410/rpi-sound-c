@@ -42,6 +42,8 @@ typedef struct LedOutData{
 
     WaveData *waves;
     wave_type my_wave_type;
+
+    LedColor dmx_color;
 } LedOutData;
 
 void set_color_vector(LedOutData *out, LedColor fft_color_base);

@@ -47,6 +47,10 @@ void config_defaults(){
     config.DTpin = 27;
     config.CLKpin = 28;
     config.SWpin = 26;
+
+    config.dmx_mode = 0;
+    config.dmx_update_delay = 0;
+    config.dmx_slave_address = 0x04;
 }
 
 static int handler(void* user, const char* section, const char* name, const char* value){
@@ -130,6 +134,15 @@ static int handler(void* user, const char* section, const char* name, const char
         pconfig->CLKpin = atoi(value);
     else if (MATCH("encoder", "SWpin"))
         pconfig->SWpin = atoi(value);
+    else if (MATCH("dmx", "dmx_mode"))
+        pconfig->dmx_mode = atoi(value);
+    else if (MATCH("dmx", "dmx_update_delay"))
+        pconfig->dmx_update_delay = atoi(value);
+    else if (MATCH("dmx", "dmx_slave_address")){
+        unsigned int val;
+        sscanf(value, "%x", &val);
+        pconfig->dmx_slave_address = val;
+    }
     else
         return 0;  /* unknown section/name, error */
     return 1;

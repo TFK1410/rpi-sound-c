@@ -17,6 +17,7 @@
 #include "loops.h"
 #include "configuration.h"
 #include "rotaryEncoder.h"
+#include "dmxReader.h"
 
 LedOutData out;
 short *audio_data;
@@ -155,9 +156,15 @@ int main(int argc, char* argv[]){
     // create offscreen canvas for vsync switching
     out.offscreen_canvas = led_matrix_create_offscreen_canvas(out.matrix);
     audio_data = calloc(out.chunk_size, sizeof(short));
+
     init_data(&out);
 
     initEncoder(config.DTpin, config.CLKpin, config.SWpin);
+
+    if(config.dmx_mode == 1){
+      initDmx(config.dmx_update_delay, config.dmx_slave_address, &out.dmx_color);
+    }
+
     printf("FFT samples: %zu. Samples per callback: %d. Size: %dx%d. Hardware gpio mapping: %s\n",
             out.chunk_size, stream_read_frames, out.matrix_width, out.matrix_height, options.hardware_mapping);
 
@@ -215,6 +222,9 @@ int main(int argc, char* argv[]){
     Pa_AbortStream(stream);
 
     pthread_join(fft_thread, NULL);
+
+    if(config.dmx_mode == 1)
+      stopDmx();
 
     free(audio_data);
 

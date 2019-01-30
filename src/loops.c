@@ -254,8 +254,13 @@ void quad_wave_mirr(LedOutData *out){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, config.white_dot);
             } else if(out->waves[QUAD_WAVE_MIRR].col_barriers[y] < out->out_matrix[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
+                if(config.dmx_mode == 0){
+                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
+                } else {
+                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->dmx_color);
+                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->dmx_color);
+                }
             } else {
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][y]);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][yy]);
