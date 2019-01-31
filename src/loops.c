@@ -23,6 +23,15 @@ void set_color_vector(LedOutData *out, LedColor fft_color_base){
     }
 }
 
+float get_max(LedColor color){
+    unsigned char mx = color.r;
+    if (mx < color.g)
+        mx = color.g;
+    if (mx < color.b)
+        mx = color.b;
+    return mx / 255.0;
+}
+
 double get_white_dot_step(LedOutData *out){
     return out->waves[out->my_wave_type].white_dot_height_step;
 }
@@ -131,6 +140,20 @@ void led_canvas_set_two_pixels(struct LedCanvas *canv, int x1, int x2, int y,
     led_canvas_set_pixel(canv, x2, y, COLOR(clr));
 }
 
+void led_canvas_set_pixel_dmx_wave(struct LedCanvas *canv, int x, int y,
+                                   LedColor bass_clr, LedColor dmx_color){
+    float mx = get_max(bass_clr);
+    LedColor clr = change_brightness(dmx_color, mx);
+    led_canvas_set_pixel(canv, x, y, COLOR(clr));
+}
+
+void led_canvas_set_two_pixels_dmx_wave(struct LedCanvas *canv, int x1, int x2,
+                                        int y, LedColor bass_clr, LedColor dmx_color){
+    float mx = get_max(bass_clr);
+    LedColor clr = change_brightness(dmx_color, mx);
+    led_canvas_set_two_pixels(canv, x1, x2, y, clr);
+}
+
 void std_wave(LedOutData *out){
     for (int x = 0; x < out->data_width; ++x) {
         int x1 = 2 * x;
@@ -140,17 +163,26 @@ void std_wave(LedOutData *out){
                out->waves[STD_WAVE].col_barriers[y] < out->white_dot_arr[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
             } else if(out->waves[STD_WAVE].col_barriers[y] < out->out_matrix[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                } else {
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->dmx_color);
+                }
             } else {
-                led_canvas_set_pixel(out->offscreen_canvas, x1, y, COLOR_PTR(out->waves[STD_WAVE].bass_color_to_matrix[x1][y]));
-                led_canvas_set_pixel(out->offscreen_canvas, x2, y, COLOR_PTR(out->waves[STD_WAVE].bass_color_to_matrix[x2][y]));
+                if(config.dmx_mode == 0){
+                    led_canvas_set_pixel(out->offscreen_canvas, x1, y, COLOR_PTR(out->waves[STD_WAVE].bass_color_to_matrix[x1][y]));
+                    led_canvas_set_pixel(out->offscreen_canvas, x2, y, COLOR_PTR(out->waves[STD_WAVE].bass_color_to_matrix[x2][y]));
+                } else {
+                    led_canvas_set_pixel_dmx_wave(out->offscreen_canvas, x1, y, *out->waves[STD_WAVE].bass_color_to_matrix[x1][y], out->dmx_color);
+                    led_canvas_set_pixel_dmx_wave(out->offscreen_canvas, x2, y, *out->waves[STD_WAVE].bass_color_to_matrix[x2][y], out->dmx_color);
+                }
             }
         }
     }
 }
 
 void ripple_wave(LedOutData *out){
-    LedColor clr;
+    LedColor clr1, clr2;
     for (int x = 0; x < out->data_width; ++x) {
         int x1 = 2 * x;
         int x2 = 2 * x + 1;
@@ -162,22 +194,40 @@ void ripple_wave(LedOutData *out){
                out->waves[RIPPLE_WAVE].col_barriers[y] < out->white_dot_arr[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
             } else if(out->waves[RIPPLE_WAVE].col_barriers[y] < out->out_matrix[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y_num]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y_num]);
+                } else {
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->dmx_color);
+                }
             } else {
-                led_canvas_set_pixel(out->offscreen_canvas, x1, y, COLOR_PTR(out->waves[RIPPLE_WAVE].bass_color_to_matrix[x1][y]));
-                led_canvas_set_pixel(out->offscreen_canvas, x2, y, COLOR_PTR(out->waves[RIPPLE_WAVE].bass_color_to_matrix[x2][y]));
+                if(config.dmx_mode == 0){
+                    led_canvas_set_pixel(out->offscreen_canvas, x1, y, COLOR_PTR(out->waves[RIPPLE_WAVE].bass_color_to_matrix[x1][y]));
+                    led_canvas_set_pixel(out->offscreen_canvas, x2, y, COLOR_PTR(out->waves[RIPPLE_WAVE].bass_color_to_matrix[x2][y]));
+                } else {
+                    led_canvas_set_pixel_dmx_wave(out->offscreen_canvas, x1, y, *out->waves[RIPPLE_WAVE].bass_color_to_matrix[x1][y], out->dmx_color);
+                    led_canvas_set_pixel_dmx_wave(out->offscreen_canvas, x2, y, *out->waves[RIPPLE_WAVE].bass_color_to_matrix[x2][y], out->dmx_color);
+                }
             }
 
             if (y % 3 == 0 &&
                 out->waves[RIPPLE_WAVE].col_barriers[y] < out->out_matrix[x]){
-                clr = change_brightness(out->fft_colors[y_num], config.darker_mult);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y_col, clr);
+                if(config.dmx_mode == 0){
+                    clr1 = change_brightness(out->fft_colors[y_num], config.darker_mult);
+                } else {
+                    clr1 = change_brightness(out->dmx_color, config.darker_mult);
+                }
+                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y_col, clr1);
             } else if (y % 3 == 0){
                 float darker = 1.0f * y / 3 * 4 / out->matrix_height;
-                clr = change_brightness(*out->waves[RIPPLE_WAVE].bass_color_to_matrix[x1][y_col], darker);
-                led_canvas_set_pixel(out->offscreen_canvas, x1, y_col, COLOR(clr));
-                clr = change_brightness(*out->waves[RIPPLE_WAVE].bass_color_to_matrix[x2][y_col], darker);
-                led_canvas_set_pixel(out->offscreen_canvas, x2, y_col, COLOR(clr));
+                clr1 = change_brightness(*out->waves[RIPPLE_WAVE].bass_color_to_matrix[x1][y_col], darker);
+                clr2 = change_brightness(*out->waves[RIPPLE_WAVE].bass_color_to_matrix[x2][y_col], darker);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_pixel(out->offscreen_canvas, x1, y_col, COLOR(clr1));
+                    led_canvas_set_pixel(out->offscreen_canvas, x2, y_col, COLOR(clr2));
+                } else {
+                    led_canvas_set_pixel_dmx_wave(out->offscreen_canvas, x1, y_col, clr1, out->dmx_color);
+                    led_canvas_set_pixel_dmx_wave(out->offscreen_canvas, x2, y_col, clr2, out->dmx_color);
+                }
             }
         }
     }
@@ -189,12 +239,20 @@ void mirror_wave(LedOutData *out){
         int x2 = out->matrix_width / 2 + x;
         for (int y = 0; y < out->waves[MIRROR_WAVE].data_height; ++y) {
             if(out->waves[MIRROR_WAVE].col_barriers[y-1] > out->white_dot_arr[x] &&
-                out->waves[MIRROR_WAVE].col_barriers[y] < out->white_dot_arr[x]){
+               out->waves[MIRROR_WAVE].col_barriers[y] < out->white_dot_arr[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
             } else if(out->waves[MIRROR_WAVE].col_barriers[y] < out->out_matrix[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                } else {
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->dmx_color);
+                }
             } else {
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[MIRROR_WAVE].bass_color_to_matrix[x1][y]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[MIRROR_WAVE].bass_color_to_matrix[x1][y]);
+                } else {
+                    led_canvas_set_two_pixels_dmx_wave(out->offscreen_canvas, x1, x2, y, *out->waves[MIRROR_WAVE].bass_color_to_matrix[x1][y], out->dmx_color);
+                }
             }
         }
     }
@@ -207,15 +265,25 @@ void quad_wave(LedOutData *out){
         for (int y = 0; y < out->waves[QUAD_WAVE].data_height; ++y) {
             int yy = out->matrix_height - y - 1;
             if(out->waves[QUAD_WAVE].col_barriers[y-1] > out->white_dot_arr[x] &&
-                out->waves[QUAD_WAVE].col_barriers[y] < out->white_dot_arr[x]){
+               out->waves[QUAD_WAVE].col_barriers[y] < out->white_dot_arr[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, config.white_dot);
             } else if(out->waves[QUAD_WAVE].col_barriers[y] < out->out_matrix[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
+                } else {
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->dmx_color);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->dmx_color);
+                }
             } else {
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE].bass_color_to_matrix[x1][y]);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE].bass_color_to_matrix[x1][yy]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE].bass_color_to_matrix[x1][y]);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE].bass_color_to_matrix[x1][yy]);
+                } else {
+                    led_canvas_set_two_pixels_dmx_wave(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE].bass_color_to_matrix[x1][y], out->dmx_color);
+                    led_canvas_set_two_pixels_dmx_wave(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE].bass_color_to_matrix[x1][yy], out->dmx_color);
+                }
             }
         }
     }
@@ -229,15 +297,25 @@ void quad_wave_inv(LedOutData *out){
             int yy1 = out->waves[QUAD_WAVE_INV].data_height - 1 - y;
             int yy2 = out->matrix_height - yy1 - 1;
             if(out->waves[QUAD_WAVE_INV].col_barriers[y-1] > out->white_dot_arr[x] &&
-                out->waves[QUAD_WAVE_INV].col_barriers[y] < out->white_dot_arr[x]){
+               out->waves[QUAD_WAVE_INV].col_barriers[y] < out->white_dot_arr[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, config.white_dot);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, config.white_dot);
             } else if(out->waves[QUAD_WAVE_INV].col_barriers[y] < out->out_matrix[x]){
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, out->fft_colors[y]);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, out->fft_colors[y]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, out->fft_colors[y]);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, out->fft_colors[y]);
+                } else {
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, out->dmx_color);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, out->dmx_color);
+                }
             } else {
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy1]);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy2]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy1, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy1]);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy2, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy2]);
+                } else {
+                    led_canvas_set_two_pixels_dmx_wave(out->offscreen_canvas, x1, x2, yy1, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy1], out->dmx_color);
+                    led_canvas_set_two_pixels_dmx_wave(out->offscreen_canvas, x1, x2, yy2, *out->waves[QUAD_WAVE_INV].bass_color_to_matrix[x1][yy2], out->dmx_color);
+                }
             }
         }
     }
@@ -250,20 +328,25 @@ void quad_wave_mirr(LedOutData *out){
         for (int y = 0; y < out->waves[QUAD_WAVE_MIRR].data_height; ++y) {
             int yy = out->matrix_height - y - 1;
             if(out->waves[QUAD_WAVE_MIRR].col_barriers[y-1] > out->white_dot_arr[x] &&
-                out->waves[QUAD_WAVE_MIRR].col_barriers[y] < out->white_dot_arr[x]){
+               out->waves[QUAD_WAVE_MIRR].col_barriers[y] < out->white_dot_arr[x]){
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, config.white_dot);
                 led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, config.white_dot);
             } else if(out->waves[QUAD_WAVE_MIRR].col_barriers[y] < out->out_matrix[x]){
                 if(config.dmx_mode == 0){
-                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
-                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->fft_colors[y]);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->fft_colors[y]);
                 } else {
-                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->dmx_color);
-                  led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->dmx_color);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, out->dmx_color);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, out->dmx_color);
                 }
             } else {
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][y]);
-                led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][yy]);
+                if(config.dmx_mode == 0){
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][y]);
+                    led_canvas_set_two_pixels(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][yy]);
+                } else {
+                    led_canvas_set_two_pixels_dmx_wave(out->offscreen_canvas, x1, x2, y, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][y], out->dmx_color);
+                    led_canvas_set_two_pixels_dmx_wave(out->offscreen_canvas, x1, x2, yy, *out->waves[QUAD_WAVE_MIRR].bass_color_to_matrix[x1][yy], out->dmx_color);
+                }
             }
         }
     }

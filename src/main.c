@@ -161,9 +161,8 @@ int main(int argc, char* argv[]){
 
     initEncoder(config.DTpin, config.CLKpin, config.SWpin);
 
-    if(config.dmx_mode == 1){
+    if(config.dmx_mode == 1)
       initDmx(config.dmx_update_delay, config.dmx_slave_address, &out.dmx_color);
-    }
 
     printf("FFT samples: %zu. Samples per callback: %d. Size: %dx%d. Hardware gpio mapping: %s\n",
             out.chunk_size, stream_read_frames, out.matrix_width, out.matrix_height, options.hardware_mapping);
@@ -192,8 +191,16 @@ int main(int argc, char* argv[]){
       if (config.disp_change_sec != 0 && (clock() - rotation_clock) / CLOCKS_PER_SEC > config.disp_change_sec){
           rotation_clock = clock();
           out.my_wave_type++;
-          if (out.my_wave_type == config.wave_types)
-              out.my_wave_type = STD_WAVE;
+          if (out.my_wave_type == config.wave_types){
+            out.my_wave_type = STD_WAVE;
+            if(config.dmx_mode == 1){
+              stopDmx();
+              config.dmx_mode = 0;
+            } else {
+              initDmx(config.dmx_update_delay, config.dmx_slave_address, &out.dmx_color);
+              config.dmx_mode = 1;
+            }
+          }
       }
 
       if (encoderState != 0){
@@ -208,8 +215,16 @@ int main(int argc, char* argv[]){
       if (encoderPush != 0){
         encoderPush = 0;
         out.my_wave_type++;
-        if (out.my_wave_type == config.wave_types)
-            out.my_wave_type = STD_WAVE;
+        if (out.my_wave_type == config.wave_types){
+          out.my_wave_type = STD_WAVE;
+          if(config.dmx_mode == 1){
+            stopDmx();
+            config.dmx_mode = 0;
+          } else {
+            initDmx(config.dmx_update_delay, config.dmx_slave_address, &out.dmx_color);
+            config.dmx_mode = 1;
+          }
+        }
       }
 
       call_loop(&out);
